@@ -40,7 +40,47 @@ async function cloudImport(id){const j=state.jobs.find(x=>x.id===id);if(!j||!win
 async function cloudPhoto(inp){const f=inp.files?.[0];if(!f)return;window._heliosCloudPhoto=await resizeCloud(f);document.getElementById("j_photo_prev").innerHTML=`<img style="max-width:180px;border-radius:10px;margin-top:8px" src="${window._heliosCloudPhoto}">`}
 function resizeCloud(file){return new Promise((res,rej)=>{const r=new FileReader();r.onload=()=>{const img=new Image();img.onload=()=>{const max=1200,scale=Math.min(1,max/Math.max(img.width,img.height)),c=document.createElement("canvas");c.width=Math.round(img.width*scale);c.height=Math.round(img.height*scale);c.getContext("2d").drawImage(img,0,0,c.width,c.height);res(c.toDataURL("image/jpeg",.72))};img.onerror=rej;img.src=r.result};r.onerror=rej;r.readAsDataURL(file)})}
 function cloudSaveConfig(){const url=document.getElementById("c_url").value.trim(),anonKey=document.getElementById("c_key").value.trim();if(!url||!anonKey)return toast("Unesi oba podatka");localStorage.setItem(CFG_KEY,JSON.stringify({url,anonKey}));toast("Cloud podešavanje sačuvano");cloudScreen()}
-function cloudScreen(){if(!configured())return setup();if(!state.auth)return authScreen();dashboard()}
+
+function recoveryScreen(token){
+ state.recoveryToken=token;
+ document.getElementById("title").textContent="Promena lozinke";
+ document.getElementById("screen").innerHTML=`<div class="section"><div class="card"><h2>Nova lozinka</h2><p class="muted">Unesi novu lozinku dva puta.</p><div class="field"><label>Nova lozinka</label><input id="new_pass" type="password" autocomplete="new-password"></div><div class="field"><label>Ponovi novu lozinku</label><input id="new_pass2" type="password" autocomplete="new-password"></div><button class="btn primary" onclick="cloudSetPassword()">Sačuvaj novu lozinku</button></div></div>`;
+ window.cloudSetPassword=async()=>{
+  const p=document.getElementById("new_pass").value;
+  const p2=document.getElementById("new_pass2").value;
+  if(p.length<6)return toast("Lozinka mora imati najmanje 6 karaktera");
+  if(p!==p2)return toast("Lozinke se ne poklapaju");
+  try{
+   const r=await fetch(state.config.url.replace(/\/$/,"")+"/auth/v1/user",{
+    method:"PUT",
+    headers:{
+     apikey:state.config.anonKey,
+     Authorization:"Bearer "+state.recoveryToken,
+     "Content-Type":"application/json"
+    },
+    body:JSON.stringify({password:p})
+   });
+   const txt=await r.text();
+   let d;
+   try{d=txt?JSON.parse(txt):null}catch{d=txt}
+   if(!r.ok)throw Error(d?.message||d?.msg||d?.error_description||d?.error||txt);
+   state.recoveryToken=null;
+   history.replaceState(null,"",location.pathname+location.search);
+   authScreen();
+   toast("Lozinka je promenjena. Prijavi se novom lozinkom.");
+  }catch(e){toast("Promena lozinke: "+e.message)}
+ };
+}
+function cloudScreen(){
+ if(!configured())return setup();
+ const hash=new URLSearchParams(location.hash.slice(1));
+ if(hash.get("type")==="recovery"&&hash.get("access_token")){
+  return recoveryScreen(hash.get("access_token"));
+ }
+ if(!state.auth)return authScreen();
+ dashboard();
+}
+
 function cloudRole(r){state.role=r;localStorage.setItem(ROLE_KEY,r);dashboard()}
 function cloudRefresh(){loadJobs()}
 function cloudLogout(){clearAuth();stopPoll();authScreen()}
