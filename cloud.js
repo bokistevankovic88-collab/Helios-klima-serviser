@@ -8,7 +8,7 @@ function auth(){try{return JSON.parse(sessionStorage.getItem(AUTH_KEY)||"null")}
 function saveAuth(a){state.auth=a;sessionStorage.setItem(AUTH_KEY,JSON.stringify(a))}
 function clearAuth(){state.auth=null;sessionStorage.removeItem(AUTH_KEY)}
 function esc(x){return String(x??"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m]))}
-function toast(x){if(typeof window.toast==="function")window.toast(x);else alert(x)}
+function toast(x){alert(String(x??""))}
 function configured(){state.config=cfg();state.auth=auth();return !!(state.config?.url&&state.config?.anonKey)}
 async function api(path,opts={}){if(!state.config)state.config=cfg();if(!state.config?.url||!state.config?.anonKey)throw Error("Cloud nije podešen");const h={apikey:state.config.anonKey,"Content-Type":"application/json",...(opts.headers||{})};if(state.auth?.access_token)h.Authorization="Bearer "+state.auth.access_token;const r=await fetch(state.config.url.replace(/\/$/,"")+path,{...opts,headers:h});const txt=await r.text();let data;try{data=txt?JSON.parse(txt):null}catch{data=txt}if(!r.ok)throw Error(data?.msg||data?.message||data?.error_description||data?.error||txt||("HTTP "+r.status));return data}
 async function login(email,password,team){const data=await api("/auth/v1/token?grant_type=password",{method:"POST",body:JSON.stringify({email,password})});saveAuth({...data,team_code:team||data.user?.user_metadata?.team_code||""});return data}
