@@ -17,7 +17,16 @@ async function refresh(){if(!state.auth?.refresh_token)return false;try{const da
 function team(){return state.auth?.team_code||state.auth?.user?.user_metadata?.team_code||""}
 async function jobs(){const t=team();if(!t)throw Error("Nedostaje tim kod");return api(`/rest/v1/service_jobs?team_code=${encodeURIComponent("eq."+t)}&order=created_at.desc&limit=100`)}
 async function createJob(j){return api("/rest/v1/service_jobs",{method:"POST",headers:{Prefer:"return=representation"},body:JSON.stringify({...j,team_code:team(),created_by:state.auth?.user?.id||null})})}
-async function updateJob(id,patch){return api(`/rest/v1/service_jobs?id=eq.${encodeURIComponent(id)}`,{method:"PATCH",headers:{Prefer:"return=representation"},body:JSON.stringify(patch)})}
+async function updateJob(id,patch){return api(`/rest/v1/service_jobs?id=eq.${encodeURIComponent(id)}`,{method:"PATCH",headers:{Prefer:"return=representation"},body:JSON.stringify(patch)})}async function deleteJob(id){
+  if(!confirm("Da li sigurno želiš da obrišeš ovaj servisni nalog?"))return;
+  try{
+    await api(`/rest/v1/service_jobs?id=eq.${encodeURIComponent(id)}`,{method:"DELETE"});
+    toast("Servisni nalog je obrisan");
+    await loadJobs();
+  }catch(e){
+    toast("Brisanje nije uspelo: "+e.message);
+  }
+}
 function statusTag(s){const map={novo:"NOVO",preuzeto:"PREUZETO",zakazano:"ZAKAZANO",teren:"NA TERENU",zavrseno:"ZAVRŠENO",otkazano:"OTKAZANO"};return `<span class="cloudStatus s-${esc(s)}">${map[s]||esc(s)}</span>`}
 function setup(){document.getElementById("title").textContent="Ana ↔ Bobi";document.getElementById("screen").innerHTML=`<div class="section"><div class="card"><h2>Cloud podešavanje</h2><p class="muted">Ovo povezuje Anin i Bobijev telefon preko Supabase-a. Lokalni podaci ostaju sačuvani.</p><div class="field"><label>Supabase Project URL</label><input id="c_url" placeholder="https://xxxx.supabase.co" value="${esc(state.config?.url||"")}"></div><div class="field"><label>Supabase anon key</label><textarea id="c_key" rows="3" placeholder="eyJ...">${esc(state.config?.anonKey||"")}</textarea></div><button class="btn primary" onclick="cloudSaveConfig()">Sačuvaj cloud podešavanje</button><p class="hint">Koristi samo javni anon ključ. Nikad ne stavljaj service-role ključ u aplikaciju.</p></div></div>`}
 function authScreen(){document.getElementById("title").textContent="Ana ↔ Bobi";document.getElementById("screen").innerHTML=`<div class="section"><div class="card"><h2>Helios dispečer</h2><p class="muted">Jedan nalog za Anu, jedan za Bobija. Oboje koristite isti tim kod.</p><div class="field"><label>Email</label><input id="cl_email" type="email" autocomplete="username"></div><div class="field"><label>Lozinka</label><input id="cl_pass" type="password" autocomplete="current-password"></div><div class="field"><label>Tim kod</label><input id="cl_team" value="HELIOS-BOBI-ANA" autocomplete="off"></div><div class="row"><button class="btn primary" onclick="cloudLogin()">Prijavi se</button><button class="btn" onclick="cloudSignup()">Napravi nalog</button></div><p class="hint">Ako je uključena potvrda emaila u Supabase-u, prvo potvrdi email.</p></div><div class="card"><button class="btn" onclick="cloudSetup()">⚙️ Cloud podešavanje</button></div></div>`}
