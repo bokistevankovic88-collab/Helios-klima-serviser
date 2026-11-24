@@ -4,9 +4,9 @@ let pollTimer=null;
 const state={config:null,auth:null,role:localStorage.getItem(ROLE_KEY)||"bobi",jobs:[],recoveryToken:null};
 const BRANDS=["Ariston","Aux","Beko","Bosch","Carrier","Clivet","Cooper&Hunter","Daikin","Daitsu","Electrolux","Ferroli","Fox","Fujitsu","Fujitsu General","Galanz","Gorenje","Gree","Haier","Hisense","Hitachi","Hyundai","Kaisai","LG","Midea","Mitsubishi Electric","Mitsubishi Heavy","Olimpia Splendid","Panasonic","Samsung","Sharp","Sinclair","TCL","Tesla","Toshiba","Toshiba Carrier","VIVAX","VOX","York","Maxa","Orion","Tristar","Housel","Bergen","Vending","Favorit","Crown","Daewoo","Chigo","MDV","Whirlpool","Tadiran","Polar","Korel","Maxon","Hokkaido","Frozini","Eskimo"];
 function cfg(){try{return JSON.parse(localStorage.getItem(CFG_KEY)||"null")}catch{return null}}
-function auth(){try{return JSON.parse(sessionStorage.getItem(AUTH_KEY)||"null")}catch{return null}}
-function saveAuth(a){state.auth=a;sessionStorage.setItem(AUTH_KEY,JSON.stringify(a))}
-function clearAuth(){state.auth=null;sessionStorage.removeItem(AUTH_KEY)}
+function auth(){try{return JSON.parse(localStorage.getItem(AUTH_KEY)||"null")}catch{return null}}
+function saveAuth(a){state.auth=a;localStorage.setItem(AUTH_KEY,JSON.stringify(a))}
+function clearAuth(){state.auth=null;localStorage.removeItem(AUTH_KEY)}
 function esc(x){return String(x??"").replace(/[&<>"']/g,m=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[m]))}
 function toast(x){alert(String(x??""))}
 function configured(){state.config=cfg();state.auth=auth();return !!(state.config?.url&&state.config?.anonKey)}
