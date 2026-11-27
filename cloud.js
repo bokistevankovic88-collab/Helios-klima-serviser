@@ -1042,7 +1042,69 @@ function stopPoll(){
 
 /* OBAVEŠTENJA */
 
+
 async function cloudNotify(){
+
+  try {
+    if (!("serviceWorker" in navigator) || !("PushManager" in window)) {
+      return toast("Ovaj uređaj ne podržava Push obaveštenja");
+    }
+
+    if (!("Notification" in window)) {
+      return toast("Obaveštenja nisu podržana");
+    }
+
+    const permission = await Notification.requestPermission();
+
+    if (permission !== "granted") {
+      return toast("Dozvola za obaveštenja nije odobrena");
+    }
+
+    const registration = await navigator.serviceWorker.ready;
+
+    let subscription = await registration.pushManager.getSubscription();
+
+    if (!subscription) {
+      const padding = "=".repeat((4 - VAPID_PUBLIC_KEY.length % 4) % 4);
+      const base64 = (VAPID_PUBLIC_KEY + padding)
+        .replace(/-/g, "+")
+        .replace(/_/g, "/");
+
+      const raw = atob(base64);
+      const applicationServerKey = Uint8Array.from(
+        raw,
+        c => c.charCodeAt(0)
+      );
+
+      subscription = await registration.pushManager.subscribe({
+        userVisibleOnly: true,
+        applicationServerKey
+      });
+    }
+
+    const result = await api(
+      "/rest/v1/push_subscriptions?on_conflict=user_id",
+      {
+        method: "POST",
+        headers: {
+          Prefer: "resolution=merge-duplicates,return=minimal"
+        },
+        body: JSON.stringify({
+          user_id: state.auth.user.id,
+          team_code: team(),
+          subscription: subscription.toJSON()
+        })
+      }
+    );
+
+    toast("iPhone je registrovan za Push obaveštenja!");
+
+  } catch (e) {
+    console.error("Push registracija:", e);
+    toast("Push greška: " + e.message);
+  }
+}
+
 
   if(!("Notification"in window))
     return toast("Ovaj browser ne podržava obaveštenja");
