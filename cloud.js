@@ -1,4 +1,3 @@
-
 (()=>{"use strict";
 
 const CFG_KEY="helios_cloud_config_v1";
@@ -13,7 +12,7 @@ const state={
   auth:null,
   role:localStorage.getItem(ROLE_KEY)||"bobi",
   jobs:[],
-  recoveryToken:null
+  recoveryToken:anull
 };
 
 const BRANDS=["Ariston","Aux","Beko","Bosch","Carrier","Clivet","Cooper&Hunter","Daikin","Daitsu","Electrolux","Ferroli","Fox","Fujitsu","Fujitsu General","Galanz","Gorenje","Gree","Haier","Hisense","Hitachi","Hyundai","Kaisai","LG","Midea","Mitsubishi Electric","Mitsubishi Heavy","Olimpia Splendid","Panasonic","Samsung","Sharp","Sinclair","TCL","Tesla","Toshiba","Toshiba Carrier","VIVAX","VOX","York","Maxa","Orion","Tristar","Housel","Bergen","Vending","Favorit","Crown","Daewoo","Chigo","MDV","Whirlpool","Tadiran","Polar","Korel","Maxon","Hokkaido","Frozini","Eskimo"];
@@ -621,7 +620,7 @@ async function loadJobs(){
   }
 }
 
-/* KREIRANJE SERVISA */
+/* KREIRANJE SERVISA + PUSH OBAVEŠTENJE */
 
 async function cloudCreateJob(){
 
@@ -656,11 +655,63 @@ async function cloudCreateJob(){
     if(!j.name||!j.phone)
       return toast("Unesi ime i telefon");
 
-    await createJob(j);
+    // Prvo se servis sigurno upisuje u bazu.
+    const created=await createJob(j);
+    const newJob=Array.isArray(created)?created[0]:created;
 
     window._heliosCloudPhoto=null;
 
-    toast("Servis poslat Bobiju");
+    // Zatim se traži slanje Push obaveštenja Bobijevim uređajima.
+    let pushMessage="";
+
+    if(newJob?.id){
+
+      try{
+
+        const pushResponse=await fetch(
+          state.config.url.replace(/\/$/,"")+"/functions/v1/send-push",
+          {
+            method:"POST",
+            headers:{
+              apikey:state.config.anonKey,
+              Authorization:"Bearer "+state.auth.access_token,
+              "Content-Type":"application/json"
+            },
+            body:JSON.stringify({job_id:newJob.id})
+          }
+        );
+
+        const pushText=await pushResponse.text();
+        let pushData;
+
+        try{
+          pushData=pushText?JSON.parse(pushText):null;
+        }catch{
+          pushData={message:pushText};
+        }
+
+        if(!pushResponse.ok){
+          console.error("Push slanje nije uspelo:",pushData);
+          pushMessage=" Servis je sačuvan, ali Push obaveštenje nije poslato: "+
+            (pushData?.error||pushData?.message||"HTTP "+pushResponse.status);
+        }else if(Number(pushData?.sent||0)===0){
+          pushMessage=" Servis je sačuvan, ali Bobijev uređaj još nije registrovan za Push.";
+        }
+
+      }catch(pushError){
+
+        console.error("Push mrežna greška:",pushError);
+        pushMessage=" Servis je sačuvan, ali slanje obaveštenja nije uspelo.";
+
+      }
+
+    }else{
+
+      pushMessage=" Servis je sačuvan, ali server nije vratio ID naloga za Push.";
+
+    }
+
+    toast("Servis poslat Bobiju."+pushMessage);
 
     await loadJobs();
 
@@ -1040,18 +1091,22 @@ function stopPoll(){
 
 }
 
-/* OBAVEŠTENJA */
-
+/* OBAVEŠTENJA — REGISTRACIJA UREĐAJA */
 
 async function cloudNotify(){
 
   try {
+
     if (!("serviceWorker" in navigator) || !("PushManager" in window)) {
       return toast("Ovaj uređaj ne podržava Push obaveštenja");
     }
 
     if (!("Notification" in window)) {
       return toast("Obaveštenja nisu podržana");
+    }
+
+    if (!state.auth?.user?.id) {
+      return toast("Prvo se prijavi u Helios");
     }
 
     const permission = await Notification.requestPermission();
@@ -1082,7 +1137,7 @@ async function cloudNotify(){
       });
     }
 
-    const result = await api(
+    await api(
       "/rest/v1/push_subscriptions?on_conflict=user_id",
       {
         method: "POST",
@@ -1097,26 +1152,12 @@ async function cloudNotify(){
       }
     );
 
-    toast("iPhone je registrovan za Push obaveštenja!");
+    toast("Uređaj je registrovan za Push obaveštenja!");
 
   } catch (e) {
     console.error("Push registracija:", e);
     toast("Push greška: " + e.message);
   }
-}
-
-
-  if(!("Notification"in window))
-    return toast("Ovaj browser ne podržava obaveštenja");
-
-  const p=await Notification.requestPermission();
-
-  toast(
-    p==="granted"?
-    "Obaveštenja uključena":
-    "Obaveštenja nisu dozvoljena"
-  );
-
 }
 
 /* JAVNE FUNKCIJE */
