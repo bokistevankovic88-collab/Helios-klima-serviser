@@ -4,7 +4,7 @@
 const CFG_KEY="helios_cloud_config_v1";
 const AUTH_KEY="helios_cloud_auth_v1";
 const ROLE_KEY="helios_cloud_role_v1";
-
+const VAPID_PUBLIC_KEY="BNjCO1NyXbOQ1sk6u1SyuK_-Sv-tk7Ic-If1KoHQmuSDfZySMp5RwpqFND3_v0O8_Cyg_UAyobfKifI_CkCLm1g";
 let pollTimer=null;
 let refreshPromise=null;
 
